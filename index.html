@@ -15,7 +15,6 @@
         .stage { position:relative; min-width:0; }
         canvas { display:block; width:100%; height:100%; border:5px solid rgba(83,48,27,.7); border-radius:22px; background:#d56b38; box-shadow:0 12px 0 rgba(78,37,20,.25); }
         .hint { position:absolute; left:18px; right:18px; bottom:18px; padding:10px 14px; border-radius:999px; background:rgba(44,36,56,.86); color:white; font-size:14px; text-align:center; pointer-events:none; }
-        .mini-map { position:absolute; right:18px; top:18px; width:184px; height:132px; border:3px solid rgba(255,255,255,.75); border-radius:14px; background:rgba(38,27,31,.75); }
         .character-card { display:grid; grid-template-columns:44px 1fr; gap:10px; align-items:center; padding:8px; margin-bottom:8px; border:2px solid transparent; border-radius:14px; background:rgba(255,255,255,.45); }
         .character-card.active { border-color:var(--gold); background:rgba(255,216,77,.25); }
         .mini-sprite { width:36px;height:44px;border-radius:18px 18px 10px 10px;border:3px solid rgba(44,36,56,.35);position:relative; }
@@ -24,8 +23,8 @@
         .letters { display:grid; grid-template-columns:repeat(5,1fr); gap:6px; }
         .letter { display:grid; place-items:center; min-height:31px; border:2px dashed rgba(92,53,34,.45); border-radius:8px; color:transparent; font-weight:900; background:rgba(255,255,255,.45); }
         .letter.found { color:#7a4c00; border-style:solid; border-color:#c08a00; background:linear-gradient(#fff6a8,#ffc53d); text-shadow:0 1px white; }
-        .inventory-list,.legend { display:flex; flex-wrap:wrap; gap:6px; padding:0; list-style:none; }
-        .inventory-list li,.legend li { padding:5px 8px; border-radius:999px; background:#ffe3a5; border:1px solid #d79635; }
+        .inventory-list { display:flex; flex-wrap:wrap; gap:6px; padding:0; list-style:none; }
+        .inventory-list li { padding:5px 8px; border-radius:999px; background:#ffe3a5; border:1px solid #d79635; }
         .objective-list { padding-left:18px; max-height:310px; overflow:auto; } .objective-list li.done{text-decoration:line-through;opacity:.62;}
         .controls { margin-bottom:0; font-size:13px; }
         .modal { position:absolute; inset:0; display:none; place-items:center; padding:22px; background:rgba(19,14,23,.58); border-radius:22px; }
@@ -50,6 +49,21 @@
         .memory-card.revealed, .memory-card.matched { background:#ffd84d; color:#241b2f; }
         .area-controls { display:grid; grid-template-columns:repeat(3,54px); gap:6px; justify-content:center; margin-top:10px; }
         .area-controls button { min-height:42px; border:0; border-radius:12px; background:#2c8a73; color:white; font-weight:900; cursor:pointer; }
+        .mini-game-screen { min-height:390px; padding:18px; border:4px solid #5b321f; border-radius:18px; background:linear-gradient(#81d1f3 0 42%, #d99045 42% 100%); position:relative; overflow:hidden; }
+        .mini-dad { width:32px; height:48px; border-radius:16px 16px 9px 9px; background:#6fb6a3; border:3px solid rgba(44,36,56,.45); position:absolute; left:28px; bottom:34px; }
+        .mini-dad:before { content:""; position:absolute; left:5px; top:-22px; width:20px; height:20px; border-radius:50%; background:#f0bd8f; border:3px solid rgba(44,36,56,.45); }
+        .mini-floor { position:absolute; left:0; right:0; bottom:0; height:42px; background:#6a4730; }
+        .need-list { display:flex; justify-content:center; flex-wrap:wrap; gap:6px; padding:0; list-style:none; }
+        .need-list li { padding:6px 9px; border-radius:999px; border:2px solid #8b552b; background:#ffe8aa; font-weight:900; }
+        .need-list li.missing { background:#ffd1c8; }
+        .repair-drop { display:inline-grid; place-items:center; width:92px; height:92px; margin:7px; border:3px dashed #704022; border-radius:18px; background:rgba(255,255,255,.35); font-weight:900; }
+        .repair-drop.filled { border-style:solid; background:#78cdb8; }
+        .draggable-item { display:inline-block; margin:7px; padding:10px 12px; border-radius:999px; background:#ffd84d; border:2px solid #8b552b; font-weight:900; cursor:grab; }
+        .platform-lane { position:absolute; left:70px; right:70px; bottom:80px; height:190px; }
+        .platform-block { position:absolute; width:92px; height:18px; border-radius:8px; background:#6a4730; }
+        .platform-dad { transition:left .18s, bottom .18s; }
+        .platform-goal { position:absolute; right:28px; top:18px; width:42px; height:42px; display:grid; place-items:center; border-radius:50%; background:#ffd84d; border:3px solid #8b552b; font-weight:900; }
+        .match-board { display:grid; grid-template-columns:repeat(4,64px); gap:10px; justify-content:center; }
     </style>
 </head>
 <body>
@@ -57,16 +71,14 @@
     <aside>
         <section class="panel">
             <h1>Outback Relic Rescue</h1>
-            <p>The family drives into the Australian outback, crashes the jeep, and Dad heads out into scrolling top-down puzzle areas to recover every golden letter relic.</p>
-            <p class="controls"><strong>Move Dad:</strong> WASD / Arrows<br><strong>Interact:</strong> Space / Click<br><strong>Mini-map:</strong> top-right of the game</p>
+            <p>Dad explores the Australian outback, collects useful supplies, and opens full-screen mini games to recover every golden letter relic.</p>
+            <p class="controls"><strong>Move Dad:</strong> WASD / Arrows<br><strong>Interact:</strong> Space / Click<br><strong>Mini games:</strong> solve on the new screen, then return to the outback</p>
         </section>
-        <section class="panel"><h2>Family in the Jeep</h2><div id="characterCards"></div></section>
-        <section class="panel"><h2>Map Legend</h2><ul class="legend"><li>Gold circles: puzzle entrances</li><li>Green rover: crash site</li><li>Blue dot: Dad</li></ul></section>
+        <section class="panel"><h2>Dad's Goal</h2><p>Some puzzle entrances need inventory items first. Hunt around the map, grab supplies, and use them inside repairs, platformers, matches, and other mini games.</p></section>
     </aside>
     <section class="stage">
         <canvas id="game" width="980" height="640"></canvas>
-        <canvas class="mini-map" id="minimap" width="184" height="132"></canvas>
-        <div class="hint" id="hint">Watch the family jeep drive in...</div>
+        <div class="hint" id="hint">Watch Dad drive into the outback...</div>
         <div class="modal" id="puzzleModal"><div class="puzzle-card" id="puzzleCard"></div></div>
     </section>
     <aside>
@@ -76,62 +88,79 @@
 </main>
 <script>
 const canvas = document.getElementById("game"), ctx = canvas.getContext("2d");
-const minimap = document.getElementById("minimap"), mctx = minimap.getContext("2d");
 const hint = document.getElementById("hint"), modal = document.getElementById("puzzleModal"), puzzleCard = document.getElementById("puzzleCard");
 const world = { w: 2600, h: 1700 };
 const relicPhrase = "HAPPYFATHERSDAY";
 const family = [
-    { id:"dad", name:"Dad", role:"adventurous puzzle solver", shirt:"#6fb6a3", hair:"#2f2a28", x:410, y:850, active:true },
-    { id:"finn", name:"Finn", role:"trail scout in the jeep", shirt:"#b569c4", hair:"#6f4f3f", x:330, y:850 },
-    { id:"mom", name:"Mom", role:"calm puzzle pro", shirt:"#8fc5ee", hair:"#6b513b", x:285, y:850 },
-    { id:"atti", name:"Atti", role:"selfie-map hero", shirt:"#f7f9ff", hair:"#7b5b46", x:240, y:850 }
+    { id:"dad", name:"Dad", role:"adventurous puzzle solver", shirt:"#6fb6a3", hair:"#2f2a28", x:410, y:850, active:true }
 ];
 const dad = family[0], jeep = { x:-180, y:875, crashed:false, timer:0 };
-const inventory = new Set(["Compass", "Canteen"]), found = new Set(), keys = {};
+const inventory = new Set(["Compass", "Canteen"]), found = new Set(), collectedSupplies = new Set(), keys = {};
 let ending = { active:false, phase:"", timer:0 };
 const puzzles = [
-    {letter:"H", x:320, y:260, name:"Spinifex Maze", type:"maze", item:"Radio Fuse"}, {letter:"A", x:760, y:330, name:"Gravity Gully", type:"jump", item:"Winch Hook"},
-    {letter:"P", x:1180, y:210, name:"Pipe Billabong", type:"pipes", item:"Clean Water"}, {letter:"P", x:1590, y:360, name:"Kangaroo Tracks", type:"track", item:"Boot Prints"},
-    {letter:"Y", x:2160, y:270, name:"Opal Mine Maze", type:"maze", item:"Lantern"}, {letter:"F", x:510, y:720, name:"Dingo Decoys", type:"memory", item:"Snack Pack"},
-    {letter:"A", x:1020, y:770, name:"Jumping Rocks", type:"jump", item:"Rope Coil"}, {letter:"T", x:1440, y:700, name:"Ancient Switches", type:"sequence", item:"Stone Switch"},
-    {letter:"H", x:2000, y:760, name:"Fuel Scramble", type:"pipes", item:"Fuel Can"}, {letter:"E", x:360, y:1190, name:"Desert Letter Maze", type:"maze", item:"Map Scrap"},
-    {letter:"R", x:830, y:1320, name:"Canyon Platformer", type:"jump", item:"Climbing Gloves"}, {letter:"S", x:1270, y:1180, name:"Snake Safe Path", type:"track", item:"Snake Charm"},
-    {letter:"D", x:1680, y:1280, name:"Sun Dial Code", type:"sequence", item:"Sun Dial"}, {letter:"A", x:2110, y:1170, name:"Relic Slide", type:"memory", item:"Jeep Key"},
-    {letter:"Y", x:2310, y:1480, name:"Final Outback Maze", type:"maze", item:"Golden Emblem"}
+    {letter:"H", x:320, y:260, name:"Rope Bridge Repair", type:"repair", item:"Bridge Badge", needs:["Rope Piece 1","Rope Piece 2","Rope Piece 3"], prompt:"Dad must use his handy skills to repair the rope bridge. Drag every rope piece into the bridge knots."},
+    {letter:"A", x:760, y:330, name:"Flat-Tyre Platformer", type:"platform", item:"Tyre Patch", needs:["Winch Hook"], prompt:"Dad needs the winch hook, then he can jump across flat tyres and grab the letter."},
+    {letter:"P", x:1180, y:210, name:"Billabong Pipe Fix", type:"pipes", item:"Clean Water", needs:["Pipe Elbow"], prompt:"Use the pipe elbow to connect the water line."},
+    {letter:"P", x:1590, y:360, name:"Kangaroo Match-Up", type:"matching", item:"Boot Prints", needs:[], prompt:"Match pairs of outback symbols before the kangaroos bounce away."},
+    {letter:"Y", x:2160, y:270, name:"Opal Mine Maze", type:"maze", item:"Lantern", needs:["Torch Battery"], prompt:"Power the torch, then guide Dad through the mine."},
+    {letter:"F", x:510, y:720, name:"Dingo Decoy Match", type:"matching", item:"Snack Pack", needs:[], prompt:"Flip cards and match decoys to distract the dingoes."},
+    {letter:"A", x:1020, y:770, name:"Jumping Rocks", type:"platform", item:"Rope Coil", needs:[], prompt:"Leap across the hot rocks in a side-on platform challenge."},
+    {letter:"T", x:1440, y:700, name:"Ancient Switches", type:"sequence", item:"Stone Switch", needs:["Sun Clue"], prompt:"Use the sun clue, then press the switches in the glowing order."},
+    {letter:"H", x:2000, y:760, name:"Fuel Line Repair", type:"pipes", item:"Fuel Can", needs:["Spare Hose"], prompt:"Repair the fuel line so the jeep gets a little healthier."},
+    {letter:"E", x:360, y:1190, name:"Desert Letter Maze", type:"maze", item:"Map Scrap", needs:[], prompt:"A classic maze, but now it opens on its own puzzle screen."},
+    {letter:"R", x:830, y:1320, name:"Canyon Platformer", type:"platform", item:"Climbing Gloves", needs:["Climbing Chalk"], prompt:"Use climbing chalk and platform across the canyon."},
+    {letter:"S", x:1270, y:1180, name:"Snake Pattern Match", type:"matching", item:"Snake Charm", needs:[], prompt:"Match snake-safe symbols to clear the path."},
+    {letter:"D", x:1680, y:1280, name:"Sun Dial Code", type:"sequence", item:"Sun Dial", needs:[], prompt:"Repeat the sun dial code."},
+    {letter:"A", x:2110, y:1170, name:"Relic Slide Repair", type:"repair", item:"Jeep Key", needs:["Gear Cog","Oil Can"], prompt:"Drag the cog and oil into place to make the relic slide work."},
+    {letter:"Y", x:2310, y:1480, name:"Final Outback Run", type:"platform", item:"Golden Emblem", needs:["Golden Emblem Mold"], prompt:"Use the mold, run the last side-on course, and claim the final letter."}
 ];
+
+const supplies = [
+    {name:"Rope Piece 1", x:230, y:520}, {name:"Rope Piece 2", x:620, y:180}, {name:"Rope Piece 3", x:420, y:1030},
+    {name:"Winch Hook", x:900, y:520}, {name:"Pipe Elbow", x:1300, y:410}, {name:"Torch Battery", x:2260, y:520},
+    {name:"Sun Clue", x:1530, y:930}, {name:"Spare Hose", x:1960, y:1040}, {name:"Climbing Chalk", x:730, y:1450},
+    {name:"Gear Cog", x:1880, y:1320}, {name:"Oil Can", x:2180, y:930}, {name:"Golden Emblem Mold", x:2380, y:1320}
+];
+let jeepFixes = 0;
 const obstacles = [{x:650,y:520,w:260,h:80},{x:1320,y:430,w:90,h:330},{x:1810,y:980,w:330,h:80},{x:930,y:1040,w:110,h:330},{x:210,y:1420,w:410,h:70}];
 const trees = Array.from({length:95},(_,i)=>({x:(i*283%2450)+60,y:(i*467%1540)+70,r:18+(i%4)*5}));
 function roundRect(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);}
 function drawSprite(p,x,y,s=1){ctx.save();ctx.translate(x,y);ctx.scale(s,s);ctx.fillStyle="rgba(0,0,0,.22)";ctx.beginPath();ctx.ellipse(0,30,18,7,0,0,7);ctx.fill();ctx.fillStyle=p.shirt;roundRect(-15,-2,30,36,9);ctx.fill();ctx.fillStyle="#f0bd8f";ctx.beginPath();ctx.arc(0,-20,16,0,7);ctx.fill();ctx.fillStyle=p.hair;ctx.beginPath();ctx.arc(0,-31,15,Math.PI,6.28);ctx.fill();ctx.fillStyle="#263247";ctx.beginPath();ctx.arc(-5,-20,2,0,7);ctx.arc(6,-20,2,0,7);ctx.fill();ctx.strokeStyle="#2c2438";ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(-8,33);ctx.lineTo(-11,48);ctx.moveTo(8,33);ctx.lineTo(11,48);ctx.stroke();ctx.restore();}
 function drawJeep(x,y,angle=0){ctx.save();ctx.translate(x,y);ctx.rotate(angle);ctx.fillStyle="#557b45";roundRect(-58,-28,116,56,14);ctx.fill();ctx.fillStyle="#2e3d39";roundRect(-18,-45,46,28,7);ctx.fill();ctx.fillStyle="#111";[-38,38].forEach(wx=>[-31,31].forEach(wy=>{ctx.beginPath();ctx.arc(wx,wy,11,0,7);ctx.fill();}));ctx.fillStyle="#f7d37b";ctx.fillRect(45,-10,16,20);ctx.restore();}
 function camera(){return {x:Math.max(0,Math.min(world.w-canvas.width,dad.x-canvas.width/2)),y:Math.max(0,Math.min(world.h-canvas.height,dad.y-canvas.height/2))};}
-function drawWorld(){const cam=camera();ctx.clearRect(0,0,canvas.width,canvas.height);ctx.save();ctx.translate(-cam.x,-cam.y);ctx.fillStyle="#c65d32";ctx.fillRect(0,0,world.w,world.h);ctx.strokeStyle="rgba(255,221,122,.38)";ctx.lineWidth=46;ctx.lineCap="round";ctx.beginPath();ctx.moveTo(0,875);ctx.bezierCurveTo(420,760,790,1010,1210,780);ctx.bezierCurveTo(1620,560,1840,860,2600,640);ctx.stroke();ctx.fillStyle="#55a9b0";ctx.beginPath();ctx.ellipse(1480,245,190,70,.2,0,7);ctx.fill();obstacles.forEach(o=>{ctx.fillStyle="#7b5140";roundRect(o.x,o.y,o.w,o.h,22);ctx.fill();});trees.forEach(t=>{ctx.fillStyle="#426b3e";ctx.beginPath();ctx.arc(t.x,t.y,t.r,0,7);ctx.fill();ctx.fillStyle="#6b3f26";ctx.fillRect(t.x-4,t.y+t.r-4,8,18);});puzzles.forEach((p,i)=>{if(found.has(i))return;ctx.fillStyle="rgba(255,255,255,.9)";ctx.beginPath();ctx.arc(p.x,p.y,28,0,7);ctx.fill();ctx.font="24px serif";ctx.textAlign="center";ctx.fillText("?",p.x,p.y+8);ctx.fillStyle="#fff";ctx.font="bold 13px Trebuchet MS";ctx.fillText(p.name,p.x,p.y+48);});drawJeep(jeep.x,jeep.y,jeep.crashed?-.45:0);if(jeep.crashed){family.slice(1).forEach((p,n)=>drawSprite(p,jeep.x-50+n*35,jeep.y+60,.85));drawSprite(dad,dad.x,dad.y,1.05);}ctx.restore();if(found.size===puzzles.length){ctx.fillStyle="rgba(36,27,47,.9)";roundRect(118,28,744,116,20);ctx.fill();ctx.fillStyle="#ffd84d";ctx.font="bold 30px Trebuchet MS";ctx.textAlign="center";ctx.fillText("Happy Father's Day",490,72);ctx.font="bold 21px Trebuchet MS";ctx.fillText("to the best father this family could ever have",490,112);}drawMiniMap();}
-function drawMiniMap(){mctx.clearRect(0,0,minimap.width,minimap.height);mctx.fillStyle="#8d442d";mctx.fillRect(0,0,184,132);const sx=184/world.w, sy=132/world.h;obstacles.forEach(o=>{mctx.fillStyle="#5f3c32";mctx.fillRect(o.x*sx,o.y*sy,o.w*sx,o.h*sy);});puzzles.forEach((p,i)=>{if(found.has(i))return;mctx.fillStyle="#fff";mctx.beginPath();mctx.arc(p.x*sx,p.y*sy,2.5,0,7);mctx.fill();});mctx.fillStyle="#58d3ff";mctx.beginPath();mctx.arc(dad.x*sx,dad.y*sy,3.5,0,7);mctx.fill();mctx.fillStyle="#7fb05b";mctx.fillRect(jeep.x*sx-3,jeep.y*sy-2,6,4);}
+function drawWorld(){const cam=camera();ctx.clearRect(0,0,canvas.width,canvas.height);ctx.save();ctx.translate(-cam.x,-cam.y);ctx.fillStyle="#c65d32";ctx.fillRect(0,0,world.w,world.h);ctx.strokeStyle="rgba(255,221,122,.38)";ctx.lineWidth=46;ctx.lineCap="round";ctx.beginPath();ctx.moveTo(0,875);ctx.bezierCurveTo(420,760,790,1010,1210,780);ctx.bezierCurveTo(1620,560,1840,860,2600,640);ctx.stroke();ctx.fillStyle="#55a9b0";ctx.beginPath();ctx.ellipse(1480,245,190,70,.2,0,7);ctx.fill();obstacles.forEach(o=>{ctx.fillStyle="#7b5140";roundRect(o.x,o.y,o.w,o.h,22);ctx.fill();});trees.forEach(t=>{ctx.fillStyle="#426b3e";ctx.beginPath();ctx.arc(t.x,t.y,t.r,0,7);ctx.fill();ctx.fillStyle="#6b3f26";ctx.fillRect(t.x-4,t.y+t.r-4,8,18);});puzzles.forEach((p,i)=>{if(found.has(i))return;ctx.fillStyle="rgba(255,255,255,.9)";ctx.beginPath();ctx.arc(p.x,p.y,28,0,7);ctx.fill();ctx.font="24px serif";ctx.textAlign="center";ctx.fillText("?",p.x,p.y+8);ctx.fillStyle="#fff";ctx.font="bold 13px Trebuchet MS";ctx.fillText(p.name,p.x,p.y+48);});drawJeep(jeep.x,jeep.y,jeep.crashed?Math.max(-.45, -.45 + jeepFixes*.04):0);supplies.forEach((it,i)=>{if(collectedSupplies.has(i))return;ctx.fillStyle="#ffd84d";ctx.beginPath();ctx.arc(it.x,it.y,15,0,7);ctx.fill();ctx.fillStyle="#5b321f";ctx.font="bold 16px Trebuchet MS";ctx.textAlign="center";ctx.fillText("+",it.x,it.y+6);ctx.font="bold 12px Trebuchet MS";ctx.fillStyle="#fff";ctx.fillText(it.name,it.x,it.y+34);});if(jeep.crashed){drawSprite(dad,dad.x,dad.y,1.05);ctx.fillStyle="#fff";ctx.font="bold 13px Trebuchet MS";ctx.textAlign="center";ctx.fillText(`Jeep repair: ${Math.min(100,jeepFixes*7)}%`,jeep.x,jeep.y-62);}ctx.restore();if(found.size===puzzles.length){ctx.fillStyle="rgba(36,27,47,.9)";roundRect(118,28,744,116,20);ctx.fill();ctx.fillStyle="#ffd84d";ctx.font="bold 30px Trebuchet MS";ctx.textAlign="center";ctx.fillText("Happy Father's Day",490,72);ctx.font="bold 21px Trebuchet MS";ctx.fillText("to the best father this family could ever have",490,112);}}
 function blocked(x,y){return obstacles.some(o=>x>o.x-25&&x<o.x+o.w+25&&y>o.y-25&&y<o.y+o.h+25);}
-function update(){if(!jeep.crashed){jeep.x+=4.2; family.forEach((p,i)=>{p.x=jeep.x-25+i*22;p.y=jeep.y+8;}); if(jeep.x>360){jeep.crashed=true;dad.x=455;dad.y=940;hint.textContent="Crash! Dad climbs out. Explore freely: any glowing entrance opens a full puzzle area.";} return;} if(ending.active){runEnding();return;} if(modal.classList.contains("open"))return; let dx=0,dy=0,s=4.2;if(keys.ArrowLeft||keys.a)dx-=s;if(keys.ArrowRight||keys.d)dx+=s;if(keys.ArrowUp||keys.w)dy-=s;if(keys.ArrowDown||keys.s)dy+=s;let nx=Math.max(25,Math.min(world.w-25,dad.x+dx)), ny=Math.max(25,Math.min(world.h-25,dad.y+dy));if(!blocked(nx,dad.y))dad.x=nx;if(!blocked(dad.x,ny))dad.y=ny;}
-function runEnding(){const d=Math.hypot(jeep.x-dad.x,jeep.y-dad.y);if(ending.phase!=="drive"&&d>12){dad.x+=(jeep.x-dad.x)/Math.max(1,d)*3.6;dad.y+=(jeep.y-dad.y)/Math.max(1,d)*3.6;hint.textContent="The message is complete! Dad automatically heads back to the jeep.";}else{ending.phase="drive";jeep.x+=5.5;family.forEach((p,i)=>{p.x=jeep.x-25+i*22;p.y=jeep.y+8;});dad.x=jeep.x+30;dad.y=jeep.y+8;hint.textContent=jeep.x>world.w+160?"Happy Father’s Day! The jeep drives off into the sunset.":"Everyone piles in and drives off with the finished message.";}}
-function interact(){if(!jeep.crashed)return;const nearby=puzzles.map((p,i)=>({...p,i,d:Math.hypot(dad.x-p.x,dad.y-p.y)})).filter(p=>p.d<76&&!found.has(p.i)).sort((a,b)=>a.d-b.d)[0];if(!nearby){hint.textContent=found.size===puzzles.length?"All relics glow from above. Return to the jeep for the Father’s Day reveal!":"Explore the outback and press Space beside any glowing puzzle entrance.";return;} openPuzzle(nearby);}
-function completePuzzle(p){found.add(p.i);inventory.add(p.item);modal.classList.remove("open");hint.textContent=`Dad cleared ${p.name}; the entrance vanished and ${p.letter} filled into the message.`;renderUi();if(found.size===puzzles.length&&!ending.active){ending.active=true;ending.phase="return";hint.textContent="Every puzzle is complete! The Father’s Day message appears as Dad heads back to the jeep.";}}
-function puzzleHeader(p, instructions){return `<h2>${p.name}</h2><p><strong>Letter reward: ${p.letter}</strong> — guide Dad through the full area to grab it.</p><p>${instructions}</p>`;}
-function areaFor(p){
-    const maps={
-        maze:["#########","#D..#...#","#.#.#.#.#","#.#...#L#","#.#####.#","#.......#","#########"],
-        jump:["#########","#D..X...#","###.###.#","#...#...#","#.###.#L#","#.....#.#","#########"],
-        pipes:["#########","#D#.....#","#.#.###.#","#...#...#","###.#.#L#","#.....#.#","#########"],
-        track:["#########","#D....X.#","#.####..#","#....#X.#","#X##.#.L#","#.......#","#########"],
-        memory:["#########","#D..#...#","#.#.#.#.#","#.#...#.#","#.#X###.#","#.....XL#","#########"],
-        sequence:["#########","#D..X...#","#.###.#.#","#...#.#L#","###.#.#.#","#.......#","#########"]
-    };
-    return maps[p.type].map(r=>r.split(""));
-}
-let activeArea = null;
-function openPuzzle(p){modal.classList.add("open");activeArea={p,grid:areaFor(p),x:0,y:0};activeArea.grid.forEach((row,y)=>row.forEach((ch,x)=>{if(ch==="D"){activeArea.x=x;activeArea.y=y;}}));renderArea();}
-function renderArea(){const {p,grid,x,y}=activeArea;const instructions=p.type==="jump"?"Parkour across the safe sand and avoid red ravine cracks.":p.type==="maze"?"Navigate the maze corridors from Dad to the glowing relic.":"Move Dad through this puzzle zone, avoid hazards, and reach the glowing relic.";puzzleCard.innerHTML=`${puzzleHeader(p,instructions)}<div class="puzzle-area"><div class="puzzle-grid" style="grid-template-columns:repeat(${grid[0].length},38px)">${grid.flatMap((row,yy)=>row.map((ch,xx)=>cell(ch,xx===x&&yy===y,p.letter))).join("")}</div><p id="puzzleNote" class="puzzle-note">${activeArea.note||"Use WASD/arrow keys or the buttons below inside this area."}</p><div class="area-controls"><span></span><button onclick="moveArea(0,-1)">▲</button><span></span><button onclick="moveArea(-1,0)">◀</button><button onclick="moveArea(0,1)">▼</button><button onclick="moveArea(1,0)">▶</button></div><button class="choice secondary" onclick="modal.classList.remove('open')">Return to outback</button></div>`;}
-function cell(ch,isDad,letter){if(isDad)return `<span class="puzzle-cell hero">D</span>`;if(ch==="#")return `<span class="puzzle-cell wall"></span>`;if(ch==="X")return `<span class="puzzle-cell danger">X</span>`;if(ch==="L")return `<span class="puzzle-cell goal">${letter}</span>`;return `<span class="puzzle-cell empty"></span>`;}
-function moveArea(dx,dy){if(!activeArea||!modal.classList.contains("open"))return;const nx=activeArea.x+dx,ny=activeArea.y+dy,ch=activeArea.grid[ny]?.[nx];if(!ch||ch==="#")return;if(ch==="X"){activeArea.note="Ouch! Dad hit a hazard and pops back to the start.";activeArea.grid.forEach((row,y)=>row.forEach((c,x)=>{if(c==="D"){activeArea.x=x;activeArea.y=y;}}));renderArea();return;}activeArea.x=nx;activeArea.y=ny;if(ch==="L")completePuzzle(activeArea.p);else renderArea();}
-function grid(rows){return `<div class="puzzle-grid" style="grid-template-columns:repeat(${rows[0].length},36px)">${rows.join("").split("").map(ch=>`<span class="puzzle-cell ${ch==="#"?"wall":ch==="E"?"goal":ch==="S"?"hero":ch==="X"?"danger":ch==="."?"gem":"platform"}">${ch==="#"?"":ch==="E"?"R":ch==="S"?"D":ch==="X"?"X":ch==="."?"":"▰"}</span>`).join("")}</div>`;}
+function update(){if(!jeep.crashed){jeep.x+=4.2; family.forEach((p,i)=>{p.x=jeep.x-25+i*22;p.y=jeep.y+8;}); if(jeep.x>360){jeep.crashed=true;dad.x=455;dad.y=940;hint.textContent="Bump! Dad climbs out. Explore freely: any glowing entrance opens a full mini-game screen.";} return;} if(ending.active){runEnding();return;} if(modal.classList.contains("open"))return; let dx=0,dy=0,s=4.2;if(keys.ArrowLeft||keys.a)dx-=s;if(keys.ArrowRight||keys.d)dx+=s;if(keys.ArrowUp||keys.w)dy-=s;if(keys.ArrowDown||keys.s)dy+=s;let nx=Math.max(25,Math.min(world.w-25,dad.x+dx)), ny=Math.max(25,Math.min(world.h-25,dad.y+dy));if(!blocked(nx,dad.y))dad.x=nx;if(!blocked(dad.x,ny))dad.y=ny;}
+function runEnding(){const d=Math.hypot(jeep.x-dad.x,jeep.y-dad.y);if(ending.phase!=="drive"&&d>12){dad.x+=(jeep.x-dad.x)/Math.max(1,d)*3.6;dad.y+=(jeep.y-dad.y)/Math.max(1,d)*3.6;hint.textContent="The message is complete! Dad automatically heads back to the jeep.";}else{ending.phase="drive";jeep.x+=5.5;family.forEach((p,i)=>{p.x=jeep.x-25+i*22;p.y=jeep.y+8;});dad.x=jeep.x+30;dad.y=jeep.y+8;hint.textContent=jeep.x>world.w+160?"Happy Father’s Day! The jeep drives off into the sunset.":"Dad drives off with the finished message and a repaired jeep.";}}
+function collectNearbySupply(){const nearby=supplies.map((it,i)=>({...it,i,d:Math.hypot(dad.x-it.x,dad.y-it.y)})).filter(it=>it.d<58&&!collectedSupplies.has(it.i)).sort((a,b)=>a.d-b.d)[0];if(!nearby)return false;collectedSupplies.add(nearby.i);inventory.add(nearby.name);hint.textContent=`Dad picked up ${nearby.name}. It can be used in a mini game.`;renderUi();return true;}
+function interact(){if(!jeep.crashed)return;if(collectNearbySupply())return;const nearby=puzzles.map((p,i)=>({...p,i,d:Math.hypot(dad.x-p.x,dad.y-p.y)})).filter(p=>p.d<76&&!found.has(p.i)).sort((a,b)=>a.d-b.d)[0];if(!nearby){hint.textContent=found.size===puzzles.length?"All relics glow from above. Return to the jeep for the Father’s Day reveal!":"Explore, collect supplies, and press Space beside any glowing puzzle entrance.";return;} openPuzzle(nearby);}
+function completePuzzle(p){found.add(p.i);inventory.add(p.item);jeepFixes++;modal.classList.remove("open");hint.textContent=`Dad returns from ${p.name}; the entrance vanished, the jeep got fixed a bit, and ${p.letter} joined the message.`;renderUi();if(found.size===puzzles.length&&!ending.active){ending.active=true;ending.phase="return";hint.textContent="Every mini game is complete! The Father’s Day message appears as Dad heads back to the repaired jeep.";}}
+function puzzleHeader(p, instructions){return `<h2>${p.name}</h2><p><strong>Letter reward: ${p.letter}</strong> — Dad steps into a new mini-game screen.</p><p>${instructions}</p>`;}
+function hasNeeds(p){return p.needs.every(i=>inventory.has(i));}
+function missingNeeds(p){return p.needs.filter(i=>!inventory.has(i));}
+let activeArea = null, activeMini = null;
+function openPuzzle(p){modal.classList.add("open");activeArea=null;activeMini=null;if(!hasNeeds(p)){const missing=missingNeeds(p);puzzleCard.innerHTML=`${puzzleHeader(p,p.prompt)}<div class="puzzle-area"><p><strong>Dad needs supplies before this puzzle will start.</strong></p><ul class="need-list">${p.needs.map(n=>`<li class="${inventory.has(n)?'':'missing'}">${inventory.has(n)?'✓':'Find'} ${n}</li>`).join("")}</ul><p class="puzzle-note">Go back to the outback and hunt for: ${missing.join(", ")}.</p><button class="choice secondary" onclick="modal.classList.remove('open')">Return to outback</button></div>`;return;} if(p.type==="maze")startMaze(p); else if(p.type==="repair")startRepair(p); else if(p.type==="platform")startPlatform(p); else if(p.type==="matching")startMatching(p); else if(p.type==="pipes")startPipes(p); else startSequence(p);}
+function dadMarkup(cls="mini-dad"){return `<span class="${cls}"></span>`;}
+function startRepair(p){activeMini={p,filled:new Set()};renderRepair();}
+function renderRepair(){const {p,filled}=activeMini;puzzleCard.innerHTML=`${puzzleHeader(p,p.prompt)}<div class="mini-game-screen"><div class="mini-floor"></div>${dadMarkup()}<h3>Drag inventory pieces onto the repair spots</h3><div>${p.needs.map(n=>`<span class="draggable-item" draggable="true" ondragstart="event.dataTransfer.setData('text/plain','${n}')">${n}</span>`).join("")}</div><div>${p.needs.map(n=>`<span class="repair-drop ${filled.has(n)?'filled':''}" ondragover="event.preventDefault()" ondrop="dropRepair(event,'${n}')">${filled.has(n)?'Fixed':'Drop '+n}</span>`).join("")}</div><button class="choice" ${filled.size===p.needs.length?'':'disabled'} onclick="completePuzzle(activeMini.p)">Finish repair</button><button class="choice secondary" onclick="modal.classList.remove('open')">Return to outback</button></div>`;}
+function dropRepair(e,n){const item=e.dataTransfer.getData('text/plain');if(item===n){activeMini.filled.add(n);renderRepair();}}
+function startPlatform(p){activeMini={p,pos:0,steps:[35,140,245,350,455]};renderPlatform();}
+function renderPlatform(){const {p,pos,steps}=activeMini;const won=pos>=steps.length-1;puzzleCard.innerHTML=`${puzzleHeader(p,p.prompt)}<div class="mini-game-screen"><div class="mini-floor"></div><span class="mini-dad platform-dad" style="left:${steps[pos]}px;bottom:${pos%2?125:58}px"></span><div class="platform-lane">${steps.map((x,i)=>`<span class="platform-block" style="left:${x-20}px;bottom:${i%2?70:0}px"></span>`).join("")}<span class="platform-goal">${p.letter}</span></div><p class="puzzle-note">${won?'Dad reached the relic!':'Use the buttons to make Dad hop platform to platform.'}</p><button class="choice" onclick="activeMini.pos=Math.max(0,activeMini.pos-1);renderPlatform()">Back</button><button class="choice" onclick="activeMini.pos=Math.min(activeMini.steps.length-1,activeMini.pos+1);renderPlatform()">Jump</button><button class="choice" ${won?'':'disabled'} onclick="completePuzzle(activeMini.p)">Grab letter</button><button class="choice secondary" onclick="modal.classList.remove('open')">Return to outback</button></div>`;}
+function startMatching(p){const icons=['🦘','🪃','🐍','⭐'];activeMini={p,cards:[...icons,...icons].sort(()=>Math.random()-.5),open:[],matched:new Set()};renderMatching();}
+function renderMatching(){const m=activeMini;puzzleCard.innerHTML=`${puzzleHeader(m.p,m.p.prompt)}<div class="mini-game-screen"><div class="mini-floor"></div>${dadMarkup()}<div class="match-board">${m.cards.map((c,i)=>`<button class="memory-card ${m.open.includes(i)||m.matched.has(i)?'revealed':''}" onclick="flipMatch(${i})">${m.open.includes(i)||m.matched.has(i)?c:'?'}</button>`).join("")}</div><button class="choice" ${m.matched.size===m.cards.length?'':'disabled'} onclick="completePuzzle(activeMini.p)">Claim letter</button><button class="choice secondary" onclick="modal.classList.remove('open')">Return to outback</button></div>`;}
+function flipMatch(i){const m=activeMini;if(m.matched.has(i)||m.open.includes(i))return;if(m.open.length===2)m.open=[];m.open.push(i);if(m.open.length===2&&m.cards[m.open[0]]===m.cards[m.open[1]])m.open.forEach(x=>m.matched.add(x));renderMatching();}
+function startPipes(p){activeMini={p,turns:0};renderSimple('Rotate three pipe pieces to connect Dad’s repair line.',3);}
+function startSequence(p){activeMini={p,seq:['☀️','🦘','💧'],hit:[]};renderSeq();}
+function renderSimple(text,needed){const m=activeMini;const done=m.turns>=needed;puzzleCard.innerHTML=`${puzzleHeader(m.p,m.p.prompt)}<div class="mini-game-screen"><div class="mini-floor"></div>${dadMarkup()}<p>${text}</p><div class="pipe-board"><button class="pipe-tile" onclick="activeMini.turns++;renderSimple('${text}',${needed})">┗</button><button class="pipe-tile" onclick="activeMini.turns++;renderSimple('${text}',${needed})">┓</button><button class="pipe-tile" onclick="activeMini.turns++;renderSimple('${text}',${needed})">┃</button></div><p class="puzzle-note">${done?'The line is connected!':'Rotate pieces '+m.turns+'/'+needed}</p><button class="choice" ${done?'':'disabled'} onclick="completePuzzle(activeMini.p)">Turn it on</button><button class="choice secondary" onclick="modal.classList.remove('open')">Return to outback</button></div>`;}
+function pressSeq(x){const m=activeMini;m.hit.push(x);if(m.hit.join('')!==m.seq.slice(0,m.hit.length).join(''))m.hit=[];renderSeq();}
+function renderSeq(){const m=activeMini, done=m.hit.length===m.seq.length;puzzleCard.innerHTML=`${puzzleHeader(m.p,m.p.prompt)}<div class="mini-game-screen"><div class="mini-floor"></div>${dadMarkup()}<p>Pattern: ${m.seq.join(' ')}</p>${m.seq.map(x=>`<button class="choice" onclick="pressSeq('${x}')">${x}</button>`).join('')}<p class="puzzle-note">${done?'Sequence complete!':'Progress: '+m.hit.length+'/'+m.seq.length}</p><button class="choice" ${done?'':'disabled'} onclick="completePuzzle(activeMini.p)">Unlock letter</button><button class="choice secondary" onclick="modal.classList.remove('open')">Return to outback</button></div>`;}
+function areaFor(p){return ["#########","#D..#...#","#.#.#.#.#","#.#...#L#","#.#####.#","#.......#","#########"].map(r=>r.split(""));}
+function startMaze(p){activeMini=null;activeArea={p,grid:areaFor(p),x:1,y:1,note:"Use WASD/arrow keys or buttons to guide Dad."};renderArea();}
+function renderArea(){const {p,grid,x,y}=activeArea;puzzleCard.innerHTML=`${puzzleHeader(p,p.prompt)}<div class="mini-game-screen"><div class="puzzle-grid" style="grid-template-columns:repeat(${grid[0].length},38px)">${grid.flatMap((row,yy)=>row.map((ch,xx)=>cell(ch,xx===x&&yy===y,p.letter))).join("")}</div><p id="puzzleNote" class="puzzle-note">${activeArea.note}</p><div class="area-controls"><span></span><button onclick="moveArea(0,-1)">▲</button><span></span><button onclick="moveArea(-1,0)">◀</button><button onclick="moveArea(0,1)">▼</button><button onclick="moveArea(1,0)">▶</button></div><button class="choice secondary" onclick="modal.classList.remove('open')">Return to outback</button></div>`;}
+function cell(ch,isDad,letter){if(isDad)return `<span class="puzzle-cell hero">D</span>`;if(ch==="#")return `<span class="puzzle-cell wall"></span>`;if(ch==="L")return `<span class="puzzle-cell goal">${letter}</span>`;return `<span class="puzzle-cell empty"></span>`;}
+function moveArea(dx,dy){if(!activeArea||!modal.classList.contains("open"))return;const nx=activeArea.x+dx,ny=activeArea.y+dy,ch=activeArea.grid[ny]?.[nx];if(!ch||ch==="#")return;activeArea.x=nx;activeArea.y=ny;if(ch==="L")completePuzzle(activeArea.p);else renderArea();}
 document.addEventListener("keydown",e=>{keys[e.key]=true;if(modal.classList.contains("open")){if(["ArrowLeft","a"].includes(e.key))moveArea(-1,0);if(["ArrowRight","d"].includes(e.key))moveArea(1,0);if(["ArrowUp","w"].includes(e.key))moveArea(0,-1);if(["ArrowDown","s"].includes(e.key))moveArea(0,1);}if(e.key===" ")interact();if(e.key==="Escape")modal.classList.remove("open");});document.addEventListener("keyup",e=>keys[e.key]=false);canvas.addEventListener("click",interact);
-function renderUi(){document.getElementById("characterCards").innerHTML=family.map(p=>`<div class="character-card ${p.id==='dad'?'active':''}"><span class="mini-sprite ${p.id}"></span><span><strong>${p.name}</strong><br>${p.role}</span></div>`).join("");document.getElementById("letters").innerHTML=relicPhrase.split("").map((l,i)=>`<span class="letter ${found.has(i)?"found":""}">${l}</span>`).join("");document.getElementById("inventory").innerHTML=[...inventory].map(i=>`<li>${i}</li>`).join("");}
+function renderUi(){document.getElementById("letters").innerHTML=relicPhrase.split("").map((l,i)=>`<span class="letter ${found.has(i)?"found":""}">${l}</span>`).join("");document.getElementById("inventory").innerHTML=[...inventory].map(i=>`<li>${i}</li>`).join("");}
 window.puzzles = puzzles; window.completePuzzle = completePuzzle;
 function loop(){update();drawWorld();requestAnimationFrame(loop);}renderUi();loop();
 </script>
