@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Outback Relic Rescue</title>
+    <title>Dad's Adventure</title>
     <style>
         :root { --dark:#241b2f; --paper:rgba(255,248,220,.94); --gold:#ffd84d; --red:#b8542f; }
         * { box-sizing:border-box; }
-        body { margin:0; height:100vh; overflow:hidden; font-family:"Trebuchet MS", Arial, sans-serif; color:var(--dark); background:linear-gradient(#7cc9ef,#f4a05e 48%,#a9482c); }
-        .game-shell { display:grid; grid-template-columns:270px 1fr 270px; gap:14px; height:100vh; padding:14px; }
+        body { margin:0; height:100vh; min-height:100dvh; overflow:hidden; font-family:"Trebuchet MS", Arial, sans-serif; color:var(--dark); background:linear-gradient(#7cc9ef,#f4a05e 48%,#a9482c); }
+        .game-shell { display:grid; grid-template-columns:270px minmax(0,1fr) 270px; gap:14px; height:100vh; height:100dvh; padding:14px; }
         aside { display:flex; flex-direction:column; gap:12px; min-width:0; }
         .panel { padding:14px; border:3px solid rgba(92,53,34,.5); border-radius:18px; background:var(--paper); box-shadow:0 8px 0 rgba(78,37,20,.2); }
         h1,h2,h3,p { margin-top:0; } h1{font-size:24px;line-height:1.05;margin-bottom:8px;} h2{font-size:18px;margin-bottom:8px;} h3{font-size:15px;margin-bottom:6px;} p,li{font-size:14px;line-height:1.35;}
@@ -66,13 +66,34 @@
         .platform-dad { transition:left .18s, bottom .18s; }
         .platform-goal { position:absolute; right:28px; top:18px; width:42px; height:42px; display:grid; place-items:center; border-radius:50%; background:#ffd84d; border:3px solid #8b552b; font-weight:900; }
         .match-board { display:grid; grid-template-columns:repeat(4,64px); gap:10px; justify-content:center; }
+        .touch-pad { position:fixed; left:12px; bottom:12px; z-index:10; display:none; grid-template-columns:repeat(3,54px); gap:6px; }
+        .touch-pad button, .action-pad button { min-height:50px; border:0; border-radius:14px; background:rgba(44,138,115,.88); color:white; font-weight:900; box-shadow:0 4px 0 rgba(0,0,0,.18); touch-action:none; }
+        .action-pad { position:fixed; right:12px; bottom:18px; z-index:10; display:none; }
+        .tap-target { position:absolute; display:grid; place-items:center; border-radius:50%; background:#ffd84d; border:4px solid #8b552b; font-weight:900; cursor:pointer; user-select:none; }
+        .bar-track { width:min(560px,90%); height:34px; margin:18px auto; border:3px solid #704022; border-radius:999px; background:linear-gradient(90deg,#d5533c 0 38%,#47b36b 38% 55%,#d5533c 55%); position:relative; }
+        .bar-pointer { width:12px; height:48px; top:-10px; border-radius:999px; background:#241b2f; position:absolute; }
+        @media (max-width: 860px) {
+            body { overflow:auto; }
+            .game-shell { grid-template-columns:1fr; grid-template-rows:auto minmax(58vh,1fr) auto; height:auto; min-height:100dvh; padding:8px; gap:8px; }
+            aside { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+            .panel { padding:10px; border-width:2px; border-radius:14px; }
+            h1{font-size:20px}.controls,p,li{font-size:12px} h2{font-size:15px}
+            .stage { height:62dvh; min-height:420px; }
+            canvas#game { height:100%; }
+            .hint { left:8px; right:8px; bottom:74px; font-size:12px; border-radius:16px; }
+            .touch-pad, .action-pad { display:grid; }
+            .puzzle-card { padding:10px; overflow:auto; }
+            .mini-game-screen { height:auto; min-height:72dvh; padding:10px; }
+            .platform-canvas { height:62dvh; min-height:360px; }
+            .puzzle-cell { width:30px; height:30px; }
+        }
     </style>
 </head>
 <body>
 <main class="game-shell">
     <aside>
         <section class="panel">
-            <h1>Outback Relic Rescue</h1>
+            <h1>Dad's Adventure</h1>
             <p>Explore, collect supplies, and enter full-screen relic games.</p>
             <p class="controls"><strong>Move:</strong> WASD / Arrows<br><strong>Interact:</strong> Space / Click<br><strong>Platformers:</strong> ← → move, ↑ jump</p>
         </section>
@@ -88,6 +109,8 @@
         <section class="panel"><h2>Inventory</h2><ul class="inventory-list" id="inventory"></ul></section>
     </aside>
 </main>
+<div class="touch-pad" aria-label="Movement controls"><span></span><button data-key="ArrowUp">▲</button><span></span><button data-key="ArrowLeft">◀</button><button data-key="ArrowDown">▼</button><button data-key="ArrowRight">▶</button></div>
+<div class="action-pad"><button id="touchInteract">Use</button></div>
 <script>
 const canvas = document.getElementById("game"), ctx = canvas.getContext("2d");
 const hint = document.getElementById("hint"), modal = document.getElementById("puzzleModal"), puzzleCard = document.getElementById("puzzleCard");
@@ -100,21 +123,21 @@ const dad = family[0], jeep = { x:-180, y:875, crashed:false, timer:0 };
 const inventory = new Set(["Compass", "Canteen"]), found = new Set(), collectedSupplies = new Set(), keys = {};
 let ending = { active:false, phase:"", timer:0 };
 const puzzles = [
-    {letter:"H", x:320, y:260, name:"Rope Bridge Repair", type:"repair", item:"Bridge Badge", needs:["Rope Piece 1","Rope Piece 2","Rope Piece 3"], prompt:"Dad must use his handy skills to repair the rope bridge. Drag every rope piece into the bridge knots."},
-    {letter:"A", x:760, y:330, name:"Flat-Tyre Platformer", type:"platform", item:"Tyre Patch", needs:["Winch Hook"], prompt:"Dad needs the winch hook, then he can jump across flat tyres and grab the letter."},
-    {letter:"P", x:1180, y:210, name:"Billabong Pipe Fix", type:"pipes", item:"Clean Water", needs:["Pipe Elbow"], prompt:"Use the pipe elbow to connect the water line."},
-    {letter:"P", x:1590, y:360, name:"Kangaroo Match-Up", type:"matching", item:"Boot Prints", needs:[], prompt:"Match pairs of outback symbols before the kangaroos bounce away."},
-    {letter:"Y", x:2160, y:270, name:"Opal Mine Maze", type:"maze", item:"Lantern", needs:["Torch Battery"], prompt:"Power the torch, then guide Dad through the mine."},
-    {letter:"F", x:510, y:720, name:"Dingo Decoy Match", type:"matching", item:"Snack Pack", needs:[], prompt:"Flip cards and match decoys to distract the dingoes."},
-    {letter:"A", x:1020, y:770, name:"Jumping Rocks", type:"platform", item:"Rope Coil", needs:[], prompt:"Leap across the hot rocks in a side-on platform challenge."},
-    {letter:"T", x:1440, y:700, name:"Ancient Switches", type:"sequence", item:"Stone Switch", needs:["Sun Clue"], prompt:"Use the sun clue, then press the switches in the glowing order."},
-    {letter:"H", x:2000, y:760, name:"Fuel Line Repair", type:"pipes", item:"Fuel Can", needs:["Spare Hose"], prompt:"Repair the fuel line so the jeep gets a little healthier."},
-    {letter:"E", x:360, y:1190, name:"Desert Letter Maze", type:"maze", item:"Map Scrap", needs:[], prompt:"A classic maze, but now it opens on its own puzzle screen."},
-    {letter:"R", x:830, y:1320, name:"Canyon Platformer", type:"platform", item:"Climbing Gloves", needs:["Climbing Chalk"], prompt:"Use climbing chalk and platform across the canyon."},
-    {letter:"S", x:1270, y:1180, name:"Snake Pattern Match", type:"matching", item:"Snake Charm", needs:[], prompt:"Match snake-safe symbols to clear the path."},
-    {letter:"D", x:1680, y:1280, name:"Sun Dial Code", type:"sequence", item:"Sun Dial", needs:[], prompt:"Repeat the sun dial code."},
-    {letter:"A", x:2110, y:1170, name:"Relic Slide Repair", type:"repair", item:"Jeep Key", needs:["Gear Cog","Oil Can"], prompt:"Drag the cog and oil into place to make the relic slide work."},
-    {letter:"Y", x:2310, y:1480, name:"Final Outback Run", type:"platform", item:"Golden Emblem", needs:["Golden Emblem Mold"], prompt:"Use the mold, run the last side-on course, and claim the final letter."}
+    {letter:"H", x:320, y:260, name:"Labyrinth of Dead Ends", type:"maze", item:"Bridge Badge", needs:["Rope Piece 1"], prompt:"Navigate a harder labyrinth from start to finish. Dead ends waste time, so plan the route."},
+    {letter:"A", x:760, y:330, name:"Sliding Relic Puzzle", type:"slide", item:"Tyre Patch", needs:["Winch Hook"], prompt:"Slide tiles until the path reads in order from 1 to 8."},
+    {letter:"P", x:1180, y:210, name:"Spot the Outback Difference", type:"spot", item:"Clean Water", needs:["Pipe Elbow"], prompt:"Compare the two scenes and tap all differences."},
+    {letter:"P", x:1590, y:360, name:"Kangaroo Pattern Match", type:"pattern", item:"Boot Prints", needs:[], prompt:"Match the hidden color sequence exactly."},
+    {letter:"Y", x:2160, y:270, name:"Billabong Pipe Connect", type:"pipes", item:"Lantern", needs:["Torch Battery"], prompt:"Rotate pieces to create one continuous pipe path."},
+    {letter:"F", x:510, y:720, name:"Quick Tap Reaction", type:"reaction", item:"Snack Pack", needs:[], prompt:"Tap the target as soon as it appears."},
+    {letter:"A", x:1020, y:770, name:"Timing Bar Stop", type:"timing", item:"Rope Coil", needs:[], prompt:"Stop the fast bar inside the green zone."},
+    {letter:"T", x:1440, y:700, name:"Dodge Obstacles", type:"dodge", item:"Stone Switch", needs:["Sun Clue"], prompt:"Move left and right to dodge incoming rocks."},
+    {letter:"H", x:2000, y:760, name:"Button Mash Repair", type:"mash", item:"Fuel Can", needs:["Spare Hose"], prompt:"Mash quickly to fill the repair meter."},
+    {letter:"E", x:360, y:1190, name:"Rhythm Tap Trail", type:"rhythm", item:"Map Scrap", needs:[], prompt:"Tap in sync when beats enter the hit zone."},
+    {letter:"R", x:830, y:1320, name:"Target Sling Shot", type:"target", item:"Climbing Gloves", needs:["Climbing Chalk"], prompt:"Hit every moving target with careful taps."},
+    {letter:"S", x:1270, y:1180, name:"Simon Memory Stones", type:"sequence", item:"Snake Charm", needs:[], prompt:"Repeat an increasingly long pattern."},
+    {letter:"D", x:1680, y:1280, name:"Card Matching Challenge", type:"matching", item:"Sun Dial", needs:[], prompt:"Flip cards and match every pair."},
+    {letter:"A", x:2110, y:1170, name:"Bridge Builder", type:"repair", item:"Jeep Key", needs:["Gear Cog","Oil Can","Rope Piece 2"], prompt:"Drag each support into place to build a safe crossing."},
+    {letter:"Y", x:2310, y:1480, name:"Final Hard Platform Run", type:"platform", item:"Golden Emblem", needs:["Golden Emblem Mold","Rope Piece 3"], prompt:"A tough non-repeating platform run. Reach the relic without falling."}
 ];
 
 const supplies = [
@@ -141,18 +164,24 @@ function puzzleHeader(p, instructions){return `<h2>${p.name}</h2><p><strong>Rewa
 function hasNeeds(p){return p.needs.every(i=>inventory.has(i));}
 function missingNeeds(p){return p.needs.filter(i=>!inventory.has(i));}
 let activeArea = null, activeMini = null;
-function openPuzzle(p){modal.classList.add("open");activeArea=null;activeMini=null;if(!hasNeeds(p)){const missing=missingNeeds(p);puzzleCard.innerHTML=`${puzzleHeader(p,p.prompt)}<div class="puzzle-area"><p><strong>Dad needs supplies before this puzzle will start.</strong></p><ul class="need-list">${p.needs.map(n=>`<li class="${inventory.has(n)?'':'missing'}">${inventory.has(n)?'✓':'Find'} ${n}</li>`).join("")}</ul><p class="puzzle-note">Go back to the outback and hunt for: ${missing.join(", ")}.</p><button class="choice secondary" onclick="modal.classList.remove('open')">Return to outback</button></div>`;return;} if(p.type==="maze")startMaze(p); else if(p.type==="repair")startRepair(p); else if(p.type==="platform")startPlatform(p); else if(p.type==="matching")startMatching(p); else if(p.type==="pipes")startPipes(p); else startSequence(p);}
+function openPuzzle(p){modal.classList.add("open");activeArea=null;activeMini=null;if(!hasNeeds(p)){const missing=missingNeeds(p);puzzleCard.innerHTML=`${puzzleHeader(p,p.prompt)}<div class="puzzle-area"><p><strong>Dad needs supplies before this puzzle will start.</strong></p><ul class="need-list">${p.needs.map(n=>`<li class="${inventory.has(n)?'':'missing'}">${inventory.has(n)?'✓':'Find'} ${n}</li>`).join("")}</ul><p class="puzzle-note">Go back to the outback and hunt for: ${missing.join(", ")}.</p><button class="choice secondary" onclick="modal.classList.remove('open')">Return to outback</button></div>`;return;} if(p.type==="maze")startMaze(p); else if(p.type==="repair")startRepair(p); else if(p.type==="platform")startPlatform(p); else if(p.type==="matching")startMatching(p); else if(p.type==="pipes")startPipes(p); else if(p.type==="sequence")startSequence(p); else startArcade(p);}
 function dadMarkup(cls="mini-dad"){return `<span class="${cls}"></span>`;}
 function startRepair(p){activeMini={p,filled:new Set()};renderRepair();}
 function renderRepair(){const {p,filled}=activeMini;puzzleCard.innerHTML=`${puzzleHeader(p,p.prompt)}<div class="mini-game-screen"><div class="mini-floor"></div>${dadMarkup()}<h3>Drag inventory pieces onto the repair spots</h3><div>${p.needs.map(n=>`<span class="draggable-item" draggable="true" ondragstart="event.dataTransfer.setData('text/plain','${n}')">${n}</span>`).join("")}</div><div>${p.needs.map(n=>`<span class="repair-drop ${filled.has(n)?'filled':''}" ondragover="event.preventDefault()" ondrop="dropRepair(event,'${n}')">${filled.has(n)?'Fixed':'Drop '+n}</span>`).join("")}</div><button class="choice" ${filled.size===p.needs.length?'':'disabled'} onclick="completePuzzle(activeMini.p)">Finish repair</button><button class="choice secondary" onclick="modal.classList.remove('open')">Return to outback</button></div>`;}
 function dropRepair(e,n){const item=e.dataTransfer.getData('text/plain');if(item===n){activeMini.filled.add(n);renderRepair();}}
+function platformTerrainFor(p){
+    const seed=[...p.name].reduce((a,c)=>a+c.charCodeAt(0),0), terrain=[{x:0,y:520,w:300,h:70}];
+    let x=410;
+    for(let i=0;i<10;i++){
+        const gap=190+((seed+i*73)%95), y=330+((seed+i*47)%190), w=120+((seed+i*31)%95);
+        terrain.push({x,y,w,h:24}); x+=gap+w;
+    }
+    terrain.push({x:x+220,y:500,w:520,h:70});
+    return {terrain,worldW:x+740};
+}
 function startPlatform(p){
-    const terrain = [
-        {x:0,y:520,w:360,h:70},{x:450,y:455,w:190,h:28},{x:760,y:390,w:210,h:28},{x:1110,y:500,w:260,h:28},
-        {x:1510,y:420,w:210,h:28},{x:1850,y:345,w:190,h:28},{x:2180,y:485,w:310,h:28},{x:2620,y:415,w:220,h:28},
-        {x:3020,y:520,w:520,h:70}
-    ];
-    activeMini={p,kind:"platform",x:60,y:430,vx:0,vy:0,onGround:false,cam:0,worldW:3540,terrain,won:false};
+    const {terrain,worldW}=platformTerrainFor(p);
+    activeMini={p,kind:"platform",x:60,y:430,vx:0,vy:0,onGround:false,cam:0,worldW,terrain,won:false};
     puzzleCard.innerHTML=`${puzzleHeader(p,"Full scrolling platformer. Use ←/→ to run and ↑ to jump. Reach the relic.")}<div style="position:relative"><canvas id="platformCanvas" class="platform-canvas" width="1200" height="620"></canvas><canvas id="platformMap" class="mini-map" width="190" height="72"></canvas></div><button class="choice secondary" onclick="activeMini=null;modal.classList.remove('open')">Return to outback</button>`;
 }
 function stepPlatform(){
@@ -167,6 +196,11 @@ function stepPlatform(){
     if(m.y>680){m.x=Math.max(60,m.x-260);m.y=120;m.vy=0;}
     if(m.x>m.worldW-220&&!m.won){m.won=true;completePuzzle(m.p);return;}
     m.cam=Math.max(0,Math.min(m.worldW-c.width,m.x-c.width*.42));drawPlatform(c,map,m);
+}
+function stepArcade(){
+    if(!activeMini||!modal.classList.contains("open"))return;
+    if(activeMini.p?.type==="timing"){activeMini.pos+=activeMini.dir*1.9;if(activeMini.pos>98||activeMini.pos<0)activeMini.dir*=-1;const el=document.getElementById('barPointer');if(el)el.style.left=activeMini.pos+'%';}
+    if(activeMini.p?.type==="dodge"){activeMini.ticks++; if(keys.ArrowLeft||keys.a)activeMini.lane=0; if(keys.ArrowRight||keys.d)activeMini.lane=2; const n=document.getElementById('dodgeNote'); if(n)n.textContent=`Lane ${activeMini.lane+1} — survive ${Math.max(0,480-activeMini.ticks)} frames`; if(activeMini.ticks>480)completePuzzle(activeMini.p);}
 }
 function drawPlatformDad(g,x,y){g.save();g.translate(x,y);g.fillStyle="rgba(0,0,0,.22)";g.beginPath();g.ellipse(0,30,18,7,0,0,7);g.fill();g.fillStyle="#6fb6a3";g.fillRect(-15,-2,30,36);g.fillStyle="#f0bd8f";g.beginPath();g.arc(0,-20,16,0,7);g.fill();g.fillStyle="#263247";g.beginPath();g.arc(-5,-20,2,0,7);g.arc(6,-20,2,0,7);g.fill();g.strokeStyle="#2c2438";g.lineWidth=3;g.beginPath();g.moveTo(-8,33);g.lineTo(-11,48);g.moveTo(8,33);g.lineTo(11,48);g.stroke();g.restore();}
 function drawPlatform(c,map,m){
@@ -185,15 +219,42 @@ function startSequence(p){activeMini={p,seq:['☀️','🦘','💧'],hit:[]};ren
 function renderSimple(text,needed){const m=activeMini;const done=m.turns>=needed;puzzleCard.innerHTML=`${puzzleHeader(m.p,m.p.prompt)}<div class="mini-game-screen"><div class="mini-floor"></div>${dadMarkup()}<p>${text}</p><div class="pipe-board"><button class="pipe-tile" onclick="activeMini.turns++;renderSimple('${text}',${needed})">┗</button><button class="pipe-tile" onclick="activeMini.turns++;renderSimple('${text}',${needed})">┓</button><button class="pipe-tile" onclick="activeMini.turns++;renderSimple('${text}',${needed})">┃</button></div><p class="puzzle-note">${done?'The line is connected!':'Rotate pieces '+m.turns+'/'+needed}</p><button class="choice" ${done?'':'disabled'} onclick="completePuzzle(activeMini.p)">Turn it on</button><button class="choice secondary" onclick="modal.classList.remove('open')">Return to outback</button></div>`;}
 function pressSeq(x){const m=activeMini;m.hit.push(x);if(m.hit.join('')!==m.seq.slice(0,m.hit.length).join(''))m.hit=[];renderSeq();}
 function renderSeq(){const m=activeMini, done=m.hit.length===m.seq.length;puzzleCard.innerHTML=`${puzzleHeader(m.p,m.p.prompt)}<div class="mini-game-screen"><div class="mini-floor"></div>${dadMarkup()}<p>Pattern: ${m.seq.join(' ')}</p>${m.seq.map(x=>`<button class="choice" onclick="pressSeq('${x}')">${x}</button>`).join('')}<p class="puzzle-note">${done?'Sequence complete!':'Progress: '+m.hit.length+'/'+m.seq.length}</p><button class="choice" ${done?'':'disabled'} onclick="completePuzzle(activeMini.p)">Unlock letter</button><button class="choice secondary" onclick="modal.classList.remove('open')">Return to outback</button></div>`;}
-function areaFor(p){return ["#########","#D..#...#","#.#.#.#.#","#.#...#L#","#.#####.#","#.......#","#########"].map(r=>r.split(""));}
+
+function startArcade(p){
+    if(p.type==="slide")return startSlide(p); if(p.type==="spot")return startSpot(p); if(p.type==="pattern")return startPattern(p);
+    if(p.type==="reaction")return startReaction(p); if(p.type==="timing")return startTiming(p); if(p.type==="dodge")return startDodge(p);
+    if(p.type==="mash")return startMash(p); if(p.type==="rhythm")return startRhythm(p); if(p.type==="target")return startTarget(p);
+    startPattern(p);
+}
+function startSlide(p){activeMini={p,tiles:[1,2,3,4,0,6,7,5,8],moves:0};renderSlide();}
+function renderSlide(){const m=activeMini, win=m.tiles.join(',')==='1,2,3,4,5,6,7,8,0';puzzleCard.innerHTML=`${puzzleHeader(m.p,m.p.prompt)}<div class="mini-game-screen"><div class="puzzle-grid" style="grid-template-columns:repeat(3,64px)">${m.tiles.map((t,i)=>`<button class="puzzle-cell ${t?'platform':'empty'}" style="width:64px;height:64px" onclick="slideTile(${i})">${t||''}</button>`).join('')}</div><p class="puzzle-note">Moves: ${m.moves}${win?' — solved!':''}</p><button class="choice" ${win?'':'disabled'} onclick="completePuzzle(activeMini.p)">Claim letter</button><button class="choice secondary" onclick="modal.classList.remove('open')">Return</button></div>`;}
+function slideTile(i){const m=activeMini,z=m.tiles.indexOf(0),ok=[-1,1,-3,3].some(d=>z+d===i && !(z%3===0&&d===-1) && !(z%3===2&&d===1));if(!ok)return;[m.tiles[i],m.tiles[z]]=[m.tiles[z],m.tiles[i]];m.moves++;renderSlide();}
+function startSpot(p){activeMini={p,found:new Set(),spots:[['hat',24,34],['sun',72,22],['snake',58,70],['rock',31,78]]};renderSpot();}
+function renderSpot(){const m=activeMini, done=m.found.size===m.spots.length;puzzleCard.innerHTML=`${puzzleHeader(m.p,m.p.prompt)}<div class="mini-game-screen"><div style="display:flex;gap:18px;justify-content:center;flex-wrap:wrap"><div class="puzzle-area">🌵 🦘 ☀️ 🪨<br>🐍 👒 🦜 ⭐</div><div class="puzzle-area" style="position:relative;width:220px;height:150px">🌵 🦘 🌙 🪨<br>🦎 🎩 🦜 ⭐${m.spots.map((s,i)=>`<button class="tap-target" style="left:${s[1]}%;top:${s[2]}%;width:34px;height:34px;font-size:12px" onclick="activeMini.found.add(${i});renderSpot()">${m.found.has(i)?'✓':''}</button>`).join('')}</div></div><p class="puzzle-note">Found ${m.found.size}/${m.spots.length}</p><button class="choice" ${done?'':'disabled'} onclick="completePuzzle(activeMini.p)">Claim letter</button></div>`;}
+function startPattern(p){activeMini={p,seq:['red','blue','gold','green','blue'],hit:[]};renderPattern();}
+function renderPattern(){const m=activeMini, done=m.hit.join(',')===m.seq.join(',');puzzleCard.innerHTML=`${puzzleHeader(m.p,m.p.prompt)}<div class="mini-game-screen"><p>Pattern: ${m.seq.map(c=>`<b style="color:${c==='gold'?'#b8860b':c}">●</b>`).join(' ')}</p>${['red','blue','gold','green'].map(c=>`<button class="choice" style="background:${c==='gold'?'#c08a00':c}" onclick="patternTap('${c}')">${c}</button>`).join('')}<p class="puzzle-note">${m.hit.length}/${m.seq.length}</p><button class="choice" ${done?'':'disabled'} onclick="completePuzzle(activeMini.p)">Unlock</button></div>`;}
+function patternTap(c){const m=activeMini;m.hit.push(c);if(m.seq[m.hit.length-1]!==c)m.hit=[];renderPattern();}
+function startReaction(p){activeMini={p,ready:false};puzzleCard.innerHTML=`${puzzleHeader(p,p.prompt)}<div class="mini-game-screen"><p class="puzzle-note">Wait for it...</p></div>`;setTimeout(()=>{if(activeMini?.p===p){activeMini.ready=true;puzzleCard.querySelector('.mini-game-screen').innerHTML='<button class="tap-target" style="left:45%;top:38%;width:96px;height:96px" onclick="completePuzzle(activeMini.p)">TAP!</button>'; }},900+Math.random()*900);}
+function startTiming(p){activeMini={p,pos:0,dir:1};puzzleCard.innerHTML=`${puzzleHeader(p,p.prompt)}<div class="mini-game-screen"><div class="bar-track"><span class="bar-pointer" id="barPointer"></span></div><button class="choice" onclick="stopTiming()">STOP</button><p class="puzzle-note" id="timingNote"></p></div>`;}
+function stopTiming(){const m=activeMini;if(m.pos>=38&&m.pos<=55)completePuzzle(m.p);else document.getElementById('timingNote').textContent='Missed. Try again.';}
+function startDodge(p){activeMini={p,lane:1,ticks:0};puzzleCard.innerHTML=`${puzzleHeader(p,p.prompt)}<div class="mini-game-screen"><p>Use ◀ ▶ or mobile buttons for 8 seconds.</p><p class="puzzle-note" id="dodgeNote"></p></div>`;}
+function startMash(p){activeMini={p,meter:0};renderMash();}
+function renderMash(){const m=activeMini;puzzleCard.innerHTML=`${puzzleHeader(m.p,m.p.prompt)}<div class="mini-game-screen"><progress value="${m.meter}" max="30" style="width:min(520px,90%);height:36px"></progress><br><button class="choice" onclick="activeMini.meter++; if(activeMini.meter>=30) completePuzzle(activeMini.p); else renderMash();">MASH!</button></div>`;}
+function startRhythm(p){activeMini={p,beat:0};puzzleCard.innerHTML=`${puzzleHeader(p,p.prompt)}<div class="mini-game-screen"><p>Tap each beat as it flashes.</p><button class="choice" id="rhythmBtn" onclick="activeMini.beat++; if(activeMini.beat>=5) completePuzzle(activeMini.p); else this.textContent='Beat '+(activeMini.beat+1)">Beat 1</button></div>`;}
+function startTarget(p){activeMini={p,hits:0};renderTarget();}
+function renderTarget(){const m=activeMini, left=15+Math.random()*70, top=18+Math.random()*55;puzzleCard.innerHTML=`${puzzleHeader(m.p,m.p.prompt)}<div class="mini-game-screen"><button class="tap-target" style="left:${left}%;top:${top}%;width:64px;height:64px" onclick="activeMini.hits++; if(activeMini.hits>=5) completePuzzle(activeMini.p); else renderTarget();">🎯</button><p class="puzzle-note">Hits ${m.hits}/5</p></div>`;}
+
+function areaFor(p){return ["#############","#D....#.....#","#.###.#.###.#","#...#...#...#","###.#####.#.#","#...#.....#.#","#.###.#####.#","#.....#.....#","#.#####.###.#","#.......#..L#","#############"].map(r=>r.split(""));}
 function startMaze(p){activeMini=null;activeArea={p,grid:areaFor(p),x:1,y:1,note:"Use WASD/arrow keys or buttons to guide Dad."};renderArea();}
 function renderArea(){const {p,grid,x,y}=activeArea;puzzleCard.innerHTML=`${puzzleHeader(p,p.prompt)}<div class="mini-game-screen"><div class="puzzle-grid" style="grid-template-columns:repeat(${grid[0].length},38px)">${grid.flatMap((row,yy)=>row.map((ch,xx)=>cell(ch,xx===x&&yy===y,p.letter))).join("")}</div><p id="puzzleNote" class="puzzle-note">${activeArea.note}</p><div class="area-controls"><span></span><button onclick="moveArea(0,-1)">▲</button><span></span><button onclick="moveArea(-1,0)">◀</button><button onclick="moveArea(0,1)">▼</button><button onclick="moveArea(1,0)">▶</button></div><button class="choice secondary" onclick="modal.classList.remove('open')">Return to outback</button></div>`;}
 function cell(ch,isDad,letter){if(isDad)return `<span class="puzzle-cell hero">D</span>`;if(ch==="#")return `<span class="puzzle-cell wall"></span>`;if(ch==="L")return `<span class="puzzle-cell goal">${letter}</span>`;return `<span class="puzzle-cell empty"></span>`;}
 function moveArea(dx,dy){if(!activeArea||!modal.classList.contains("open"))return;const nx=activeArea.x+dx,ny=activeArea.y+dy,ch=activeArea.grid[ny]?.[nx];if(!ch||ch==="#")return;activeArea.x=nx;activeArea.y=ny;if(ch==="L")completePuzzle(activeArea.p);else renderArea();}
 document.addEventListener("keydown",e=>{keys[e.key]=true;const open=modal.classList.contains("open");if(open){if(["ArrowLeft","a"].includes(e.key))moveArea(-1,0);if(["ArrowRight","d"].includes(e.key))moveArea(1,0);if(["ArrowUp","w"].includes(e.key))moveArea(0,-1);if(["ArrowDown","s"].includes(e.key))moveArea(0,1);}if(e.key===" "&&!open)interact();if(e.key==="Escape"){activeMini=null;activeArea=null;modal.classList.remove("open");}});document.addEventListener("keyup",e=>keys[e.key]=false);canvas.addEventListener("click",interact);
+document.querySelectorAll('[data-key]').forEach(btn=>{const k=btn.dataset.key;['pointerdown','touchstart'].forEach(ev=>btn.addEventListener(ev,e=>{e.preventDefault();keys[k]=true;if(modal.classList.contains('open')){if(k==='ArrowLeft')moveArea(-1,0);if(k==='ArrowRight')moveArea(1,0);if(k==='ArrowUp')moveArea(0,-1);if(k==='ArrowDown')moveArea(0,1);}}));['pointerup','pointercancel','touchend','touchcancel','mouseleave'].forEach(ev=>btn.addEventListener(ev,()=>keys[k]=false));});
+document.getElementById('touchInteract').addEventListener('click',interact);
 function renderUi(){document.getElementById("letters").innerHTML=relicPhrase.split("").map((l,i)=>`<span class="letter ${found.has(i)?"found":""}">${l}</span>`).join("");document.getElementById("inventory").innerHTML=[...inventory].map(i=>`<li>${i}</li>`).join("");}
 window.puzzles = puzzles; window.completePuzzle = completePuzzle;
-function loop(){update();drawWorld();stepPlatform();requestAnimationFrame(loop);}renderUi();loop();
+function loop(){update();drawWorld();stepPlatform();stepArcade();requestAnimationFrame(loop);}renderUi();loop();
 </script>
 </body>
 </html>
