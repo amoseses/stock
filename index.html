@@ -27,9 +27,9 @@
         .inventory-list li { padding:5px 8px; border-radius:999px; background:#ffe3a5; border:1px solid #d79635; }
         .objective-list { padding-left:18px; max-height:310px; overflow:auto; } .objective-list li.done{text-decoration:line-through;opacity:.62;}
         .controls { margin-bottom:0; font-size:13px; }
-        .modal { position:absolute; inset:0; display:none; place-items:center; padding:22px; background:rgba(19,14,23,.58); border-radius:22px; }
+        .modal { position:fixed; inset:0; z-index:20; display:none; place-items:stretch; padding:0; background:rgba(19,14,23,.82); }
         .modal.open { display:grid; }
-        .puzzle-card { width:min(720px,92%); border:4px solid #5b321f; border-radius:22px; padding:18px; background:#fff1c5; box-shadow:0 14px 0 rgba(49,26,16,.35); text-align:center; }
+        .puzzle-card { width:100vw; height:100vh; border:0; border-radius:0; padding:18px; background:#fff1c5; box-shadow:none; text-align:center; overflow:hidden; }
         .puzzle-grid { display:grid; gap:6px; justify-content:center; margin:12px auto; }
         .puzzle-cell { width:38px; height:38px; display:grid; place-items:center; border-radius:8px; background:#f6c46c; border:2px solid #8b552b; font-weight:900; }
         .wall{background:#3d303a;color:white}.goal{background:#ffd84d}.hero{background:#7ed6ff}.danger{background:#d5533c;color:white}.gem{background:#fff}.platform{background:#6a4730;color:white}.start{background:#78cdb8}.empty{background:#f8d894}
@@ -49,7 +49,9 @@
         .memory-card.revealed, .memory-card.matched { background:#ffd84d; color:#241b2f; }
         .area-controls { display:grid; grid-template-columns:repeat(3,54px); gap:6px; justify-content:center; margin-top:10px; }
         .area-controls button { min-height:42px; border:0; border-radius:12px; background:#2c8a73; color:white; font-weight:900; cursor:pointer; }
-        .mini-game-screen { min-height:390px; padding:18px; border:4px solid #5b321f; border-radius:18px; background:linear-gradient(#81d1f3 0 42%, #d99045 42% 100%); position:relative; overflow:hidden; }
+        .mini-game-screen { height:calc(100vh - 128px); min-height:460px; padding:16px; border:4px solid #5b321f; border-radius:18px; background:linear-gradient(#81d1f3 0 42%, #d99045 42% 100%); position:relative; overflow:hidden; }
+        .platform-canvas { width:100%; height:calc(100vh - 150px); min-height:480px; border:4px solid #5b321f; border-radius:18px; background:#8bd6f6; display:block; }
+        .mini-map { position:absolute; right:22px; top:22px; width:190px; height:72px; border:3px solid rgba(36,27,47,.65); border-radius:12px; background:rgba(255,241,197,.88); }
         .mini-dad { width:32px; height:48px; border-radius:16px 16px 9px 9px; background:#6fb6a3; border:3px solid rgba(44,36,56,.45); position:absolute; left:28px; bottom:34px; }
         .mini-dad:before { content:""; position:absolute; left:5px; top:-22px; width:20px; height:20px; border-radius:50%; background:#f0bd8f; border:3px solid rgba(44,36,56,.45); }
         .mini-floor { position:absolute; left:0; right:0; bottom:0; height:42px; background:#6a4730; }
@@ -71,10 +73,10 @@
     <aside>
         <section class="panel">
             <h1>Outback Relic Rescue</h1>
-            <p>Dad explores the Australian outback, collects useful supplies, and opens full-screen mini games to recover every golden letter relic.</p>
-            <p class="controls"><strong>Move Dad:</strong> WASD / Arrows<br><strong>Interact:</strong> Space / Click<br><strong>Mini games:</strong> solve on the new screen, then return to the outback</p>
+            <p>Explore, collect supplies, and enter full-screen relic games.</p>
+            <p class="controls"><strong>Move:</strong> WASD / Arrows<br><strong>Interact:</strong> Space / Click<br><strong>Platformers:</strong> ← → move, ↑ jump</p>
         </section>
-        <section class="panel"><h2>Dad's Goal</h2><p>Some puzzle entrances need inventory items first. Hunt around the map, grab supplies, and use them inside repairs, platformers, matches, and other mini games.</p></section>
+        <section class="panel"><h2>Dad's Goal</h2><p>Find items, spend them in relic games, and complete the message.</p></section>
     </aside>
     <section class="stage">
         <canvas id="game" width="980" height="640"></canvas>
@@ -134,8 +136,8 @@ function update(){if(!jeep.crashed){jeep.x+=4.2; family.forEach((p,i)=>{p.x=jeep
 function runEnding(){const d=Math.hypot(jeep.x-dad.x,jeep.y-dad.y);if(ending.phase!=="drive"&&d>12){dad.x+=(jeep.x-dad.x)/Math.max(1,d)*3.6;dad.y+=(jeep.y-dad.y)/Math.max(1,d)*3.6;hint.textContent="The message is complete! Dad automatically heads back to the jeep.";}else{ending.phase="drive";jeep.x+=5.5;family.forEach((p,i)=>{p.x=jeep.x-25+i*22;p.y=jeep.y+8;});dad.x=jeep.x+30;dad.y=jeep.y+8;hint.textContent=jeep.x>world.w+160?"Happy Father’s Day! The jeep drives off into the sunset.":"Dad drives off with the finished message and a repaired jeep.";}}
 function collectNearbySupply(){const nearby=supplies.map((it,i)=>({...it,i,d:Math.hypot(dad.x-it.x,dad.y-it.y)})).filter(it=>it.d<58&&!collectedSupplies.has(it.i)).sort((a,b)=>a.d-b.d)[0];if(!nearby)return false;collectedSupplies.add(nearby.i);inventory.add(nearby.name);hint.textContent=`Dad picked up ${nearby.name}. It can be used in a mini game.`;renderUi();return true;}
 function interact(){if(!jeep.crashed)return;if(collectNearbySupply())return;const nearby=puzzles.map((p,i)=>({...p,i,d:Math.hypot(dad.x-p.x,dad.y-p.y)})).filter(p=>p.d<76&&!found.has(p.i)).sort((a,b)=>a.d-b.d)[0];if(!nearby){hint.textContent=found.size===puzzles.length?"All relics glow from above. Return to the jeep for the Father’s Day reveal!":"Explore, collect supplies, and press Space beside any glowing puzzle entrance.";return;} openPuzzle(nearby);}
-function completePuzzle(p){found.add(p.i);inventory.add(p.item);jeepFixes++;modal.classList.remove("open");hint.textContent=`Dad returns from ${p.name}; the entrance vanished, the jeep got fixed a bit, and ${p.letter} joined the message.`;renderUi();if(found.size===puzzles.length&&!ending.active){ending.active=true;ending.phase="return";hint.textContent="Every mini game is complete! The Father’s Day message appears as Dad heads back to the repaired jeep.";}}
-function puzzleHeader(p, instructions){return `<h2>${p.name}</h2><p><strong>Letter reward: ${p.letter}</strong> — Dad steps into a new mini-game screen.</p><p>${instructions}</p>`;}
+function completePuzzle(p){p.needs.forEach(n=>inventory.delete(n));found.add(p.i);inventory.add(p.item);jeepFixes++;activeMini=null;activeArea=null;modal.classList.remove("open");hint.textContent=`${p.name} cleared. Used items disappeared, ${p.letter} joined the message.`;renderUi();if(found.size===puzzles.length&&!ending.active){ending.active=true;ending.phase="return";hint.textContent="Message complete! Dad heads back to the jeep.";}}
+function puzzleHeader(p, instructions){return `<h2>${p.name}</h2><p><strong>Reward: ${p.letter}</strong> — ${instructions}</p>`;}
 function hasNeeds(p){return p.needs.every(i=>inventory.has(i));}
 function missingNeeds(p){return p.needs.filter(i=>!inventory.has(i));}
 let activeArea = null, activeMini = null;
@@ -144,8 +146,37 @@ function dadMarkup(cls="mini-dad"){return `<span class="${cls}"></span>`;}
 function startRepair(p){activeMini={p,filled:new Set()};renderRepair();}
 function renderRepair(){const {p,filled}=activeMini;puzzleCard.innerHTML=`${puzzleHeader(p,p.prompt)}<div class="mini-game-screen"><div class="mini-floor"></div>${dadMarkup()}<h3>Drag inventory pieces onto the repair spots</h3><div>${p.needs.map(n=>`<span class="draggable-item" draggable="true" ondragstart="event.dataTransfer.setData('text/plain','${n}')">${n}</span>`).join("")}</div><div>${p.needs.map(n=>`<span class="repair-drop ${filled.has(n)?'filled':''}" ondragover="event.preventDefault()" ondrop="dropRepair(event,'${n}')">${filled.has(n)?'Fixed':'Drop '+n}</span>`).join("")}</div><button class="choice" ${filled.size===p.needs.length?'':'disabled'} onclick="completePuzzle(activeMini.p)">Finish repair</button><button class="choice secondary" onclick="modal.classList.remove('open')">Return to outback</button></div>`;}
 function dropRepair(e,n){const item=e.dataTransfer.getData('text/plain');if(item===n){activeMini.filled.add(n);renderRepair();}}
-function startPlatform(p){activeMini={p,pos:0,steps:[35,140,245,350,455]};renderPlatform();}
-function renderPlatform(){const {p,pos,steps}=activeMini;const won=pos>=steps.length-1;puzzleCard.innerHTML=`${puzzleHeader(p,p.prompt)}<div class="mini-game-screen"><div class="mini-floor"></div><span class="mini-dad platform-dad" style="left:${steps[pos]}px;bottom:${pos%2?125:58}px"></span><div class="platform-lane">${steps.map((x,i)=>`<span class="platform-block" style="left:${x-20}px;bottom:${i%2?70:0}px"></span>`).join("")}<span class="platform-goal">${p.letter}</span></div><p class="puzzle-note">${won?'Dad reached the relic!':'Use the buttons to make Dad hop platform to platform.'}</p><button class="choice" onclick="activeMini.pos=Math.max(0,activeMini.pos-1);renderPlatform()">Back</button><button class="choice" onclick="activeMini.pos=Math.min(activeMini.steps.length-1,activeMini.pos+1);renderPlatform()">Jump</button><button class="choice" ${won?'':'disabled'} onclick="completePuzzle(activeMini.p)">Grab letter</button><button class="choice secondary" onclick="modal.classList.remove('open')">Return to outback</button></div>`;}
+function startPlatform(p){
+    const terrain = [
+        {x:0,y:520,w:360,h:70},{x:450,y:455,w:190,h:28},{x:760,y:390,w:210,h:28},{x:1110,y:500,w:260,h:28},
+        {x:1510,y:420,w:210,h:28},{x:1850,y:345,w:190,h:28},{x:2180,y:485,w:310,h:28},{x:2620,y:415,w:220,h:28},
+        {x:3020,y:520,w:520,h:70}
+    ];
+    activeMini={p,kind:"platform",x:60,y:430,vx:0,vy:0,onGround:false,cam:0,worldW:3540,terrain,won:false};
+    puzzleCard.innerHTML=`${puzzleHeader(p,"Full scrolling platformer. Use ←/→ to run and ↑ to jump. Reach the relic.")}<div style="position:relative"><canvas id="platformCanvas" class="platform-canvas" width="1200" height="620"></canvas><canvas id="platformMap" class="mini-map" width="190" height="72"></canvas></div><button class="choice secondary" onclick="activeMini=null;modal.classList.remove('open')">Return to outback</button>`;
+}
+function stepPlatform(){
+    const m=activeMini;if(!m||m.kind!=="platform"||!modal.classList.contains("open"))return;
+    const c=document.getElementById("platformCanvas"), map=document.getElementById("platformMap"); if(!c||!map)return;
+    if(keys.ArrowLeft||keys.a)m.vx-=0.75;if(keys.ArrowRight||keys.d)m.vx+=0.75;
+    m.vx*=0.86;m.vx=Math.max(-7,Math.min(7,m.vx));
+    if((keys.ArrowUp||keys.w)&&m.onGround){m.vy=-16;m.onGround=false;}
+    m.vy+=0.72;m.x+=m.vx;m.y+=m.vy;m.onGround=false;
+    m.x=Math.max(20,Math.min(m.worldW-40,m.x));
+    for(const r of m.terrain){if(m.x+18>r.x&&m.x-18<r.x+r.w&&m.y+46>r.y&&m.y+46<r.y+r.h+24&&m.vy>=0){m.y=r.y-46;m.vy=0;m.onGround=true;}}
+    if(m.y>680){m.x=Math.max(60,m.x-260);m.y=120;m.vy=0;}
+    if(m.x>m.worldW-220&&!m.won){m.won=true;completePuzzle(m.p);return;}
+    m.cam=Math.max(0,Math.min(m.worldW-c.width,m.x-c.width*.42));drawPlatform(c,map,m);
+}
+function drawPlatformDad(g,x,y){g.save();g.translate(x,y);g.fillStyle="rgba(0,0,0,.22)";g.beginPath();g.ellipse(0,30,18,7,0,0,7);g.fill();g.fillStyle="#6fb6a3";g.fillRect(-15,-2,30,36);g.fillStyle="#f0bd8f";g.beginPath();g.arc(0,-20,16,0,7);g.fill();g.fillStyle="#263247";g.beginPath();g.arc(-5,-20,2,0,7);g.arc(6,-20,2,0,7);g.fill();g.strokeStyle="#2c2438";g.lineWidth=3;g.beginPath();g.moveTo(-8,33);g.lineTo(-11,48);g.moveTo(8,33);g.lineTo(11,48);g.stroke();g.restore();}
+function drawPlatform(c,map,m){
+    const g=c.getContext("2d"), mm=map.getContext("2d");g.clearRect(0,0,c.width,c.height);g.fillStyle="#8bd6f6";g.fillRect(0,0,c.width,c.height);g.fillStyle="#f6b65f";g.fillRect(0,360,c.width,260);
+    g.save();g.translate(-m.cam,0);m.terrain.forEach((r,i)=>{g.fillStyle=i%2?"#765039":"#5f3d2f";g.fillRect(r.x,r.y,r.w,r.h);});
+    for(let x=250;x<m.worldW;x+=410){g.fillStyle="#d5543c";g.beginPath();g.moveTo(x,570);g.lineTo(x+34,520);g.lineTo(x+68,570);g.fill();}
+    g.fillStyle="#ffd84d";g.beginPath();g.arc(m.worldW-150,465,34,0,7);g.fill();g.fillStyle="#5b321f";g.font="bold 28px Trebuchet MS";g.textAlign="center";g.fillText(m.p.letter,m.worldW-150,475);
+    drawPlatformDad(g,m.x,m.y);g.restore();
+    mm.clearRect(0,0,map.width,map.height);mm.fillStyle="#f4d98b";mm.fillRect(0,0,map.width,map.height);mm.fillStyle="#6a4730";m.terrain.forEach(r=>mm.fillRect(r.x/m.worldW*map.width,r.y/620*map.height,Math.max(6,r.w/m.worldW*map.width),4));mm.fillStyle="#2c8a73";mm.beginPath();mm.arc(m.x/m.worldW*map.width,m.y/620*map.height,5,0,7);mm.fill();mm.fillStyle="#ffd84d";mm.fillRect(map.width-12,52,8,8);
+}
 function startMatching(p){const icons=['🦘','🪃','🐍','⭐'];activeMini={p,cards:[...icons,...icons].sort(()=>Math.random()-.5),open:[],matched:new Set()};renderMatching();}
 function renderMatching(){const m=activeMini;puzzleCard.innerHTML=`${puzzleHeader(m.p,m.p.prompt)}<div class="mini-game-screen"><div class="mini-floor"></div>${dadMarkup()}<div class="match-board">${m.cards.map((c,i)=>`<button class="memory-card ${m.open.includes(i)||m.matched.has(i)?'revealed':''}" onclick="flipMatch(${i})">${m.open.includes(i)||m.matched.has(i)?c:'?'}</button>`).join("")}</div><button class="choice" ${m.matched.size===m.cards.length?'':'disabled'} onclick="completePuzzle(activeMini.p)">Claim letter</button><button class="choice secondary" onclick="modal.classList.remove('open')">Return to outback</button></div>`;}
 function flipMatch(i){const m=activeMini;if(m.matched.has(i)||m.open.includes(i))return;if(m.open.length===2)m.open=[];m.open.push(i);if(m.open.length===2&&m.cards[m.open[0]]===m.cards[m.open[1]])m.open.forEach(x=>m.matched.add(x));renderMatching();}
@@ -159,10 +190,10 @@ function startMaze(p){activeMini=null;activeArea={p,grid:areaFor(p),x:1,y:1,note
 function renderArea(){const {p,grid,x,y}=activeArea;puzzleCard.innerHTML=`${puzzleHeader(p,p.prompt)}<div class="mini-game-screen"><div class="puzzle-grid" style="grid-template-columns:repeat(${grid[0].length},38px)">${grid.flatMap((row,yy)=>row.map((ch,xx)=>cell(ch,xx===x&&yy===y,p.letter))).join("")}</div><p id="puzzleNote" class="puzzle-note">${activeArea.note}</p><div class="area-controls"><span></span><button onclick="moveArea(0,-1)">▲</button><span></span><button onclick="moveArea(-1,0)">◀</button><button onclick="moveArea(0,1)">▼</button><button onclick="moveArea(1,0)">▶</button></div><button class="choice secondary" onclick="modal.classList.remove('open')">Return to outback</button></div>`;}
 function cell(ch,isDad,letter){if(isDad)return `<span class="puzzle-cell hero">D</span>`;if(ch==="#")return `<span class="puzzle-cell wall"></span>`;if(ch==="L")return `<span class="puzzle-cell goal">${letter}</span>`;return `<span class="puzzle-cell empty"></span>`;}
 function moveArea(dx,dy){if(!activeArea||!modal.classList.contains("open"))return;const nx=activeArea.x+dx,ny=activeArea.y+dy,ch=activeArea.grid[ny]?.[nx];if(!ch||ch==="#")return;activeArea.x=nx;activeArea.y=ny;if(ch==="L")completePuzzle(activeArea.p);else renderArea();}
-document.addEventListener("keydown",e=>{keys[e.key]=true;if(modal.classList.contains("open")){if(["ArrowLeft","a"].includes(e.key))moveArea(-1,0);if(["ArrowRight","d"].includes(e.key))moveArea(1,0);if(["ArrowUp","w"].includes(e.key))moveArea(0,-1);if(["ArrowDown","s"].includes(e.key))moveArea(0,1);}if(e.key===" ")interact();if(e.key==="Escape")modal.classList.remove("open");});document.addEventListener("keyup",e=>keys[e.key]=false);canvas.addEventListener("click",interact);
+document.addEventListener("keydown",e=>{keys[e.key]=true;const open=modal.classList.contains("open");if(open){if(["ArrowLeft","a"].includes(e.key))moveArea(-1,0);if(["ArrowRight","d"].includes(e.key))moveArea(1,0);if(["ArrowUp","w"].includes(e.key))moveArea(0,-1);if(["ArrowDown","s"].includes(e.key))moveArea(0,1);}if(e.key===" "&&!open)interact();if(e.key==="Escape"){activeMini=null;activeArea=null;modal.classList.remove("open");}});document.addEventListener("keyup",e=>keys[e.key]=false);canvas.addEventListener("click",interact);
 function renderUi(){document.getElementById("letters").innerHTML=relicPhrase.split("").map((l,i)=>`<span class="letter ${found.has(i)?"found":""}">${l}</span>`).join("");document.getElementById("inventory").innerHTML=[...inventory].map(i=>`<li>${i}</li>`).join("");}
 window.puzzles = puzzles; window.completePuzzle = completePuzzle;
-function loop(){update();drawWorld();requestAnimationFrame(loop);}renderUi();loop();
+function loop(){update();drawWorld();stepPlatform();requestAnimationFrame(loop);}renderUi();loop();
 </script>
 </body>
 </html>
