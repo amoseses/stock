@@ -166,7 +166,7 @@ function interact(){if(!jeep.crashed)return;if(collectNearbySupply())return;cons
 function completePuzzle(p){p.needs.forEach(n=>inventory.delete(n));found.add(p.i);inventory.add(p.item);jeepFixes++;activeMini=null;activeArea=null;modal.classList.remove("open");hint.textContent=`${p.name} cleared. Used items disappeared, ${p.letter} joined the message.`;renderUi();if(found.size===puzzles.length&&!ending.active){ending.active=true;ending.phase="return";hint.textContent="Message complete! Dad heads back to the jeep.";}}
 function escapeHtml(value){return String(value).replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[ch]));}
 function setPuzzleNote(text){const n=document.querySelector('.puzzle-note'); if(n)n.textContent=text;}
-function puzzleHeader(p, instructions){return `<h2>${p.name}</h2><p><strong>Reward: ${p.letter}</strong> — ${instructions}</p>`;}
+function puzzleHeader(p){return `<h2>${p.name}</h2><p><strong>Reward: ${p.letter}</strong></p>`;}
 function hasNeeds(p){return p.needs.every(i=>inventory.has(i));}
 function missingNeeds(p){return p.needs.filter(i=>!inventory.has(i));}
 let activeArea = null, activeMini = null;
